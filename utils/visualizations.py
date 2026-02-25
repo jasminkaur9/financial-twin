@@ -341,13 +341,14 @@ def plot_retirement_timeline(council_results: dict, current_age: int) -> go.Figu
         )
 
     fig.update_layout(
-        **_dark_layout(),
+        **_dark_layout(legend=dict(orientation="h", y=-0.2,
+                                   bgcolor="rgba(0,0,0,0)", bordercolor="rgba(255,255,255,0.1)",
+                                   borderwidth=1, font=dict(size=11))),
         title=dict(text="Retirement Timeline — When Do You Stop Working?", font=dict(size=16, color=CYAN)),
         barmode="stack",
         xaxis_title="Years from Now",
         yaxis_title="",
         bargap=0.3,
-        legend=dict(orientation="h", y=-0.2),
     )
     return fig
 
@@ -371,9 +372,9 @@ def plot_cash_flow(monthly_income: float, monthly_expenses: float,
         x=categories,
         y=values,
         connector=dict(line=dict(color="rgba(255,255,255,0.15)", width=1, dash="dot")),
-        increasing=dict(marker=dict(color=GREEN, opacity=0.85)),
-        decreasing=dict(marker=dict(color=RED, opacity=0.85)),
-        totals=dict(marker=dict(color=CYAN, opacity=0.85)),
+        increasing=dict(marker=dict(color=GREEN)),
+        decreasing=dict(marker=dict(color=RED)),
+        totals=dict(marker=dict(color=CYAN)),
         texttemplate="$%{y:,.0f}",
         textfont=dict(color="white", size=11),
         hovertemplate="<b>%{x}</b><br>$%{y:,.0f}<extra></extra>",
