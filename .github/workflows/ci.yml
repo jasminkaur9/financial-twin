@@ -1,0 +1,83 @@
+name: CI/CD — Financial Twin
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 . --max-line-length=110 --exclude=.git,__pycache__ --ignore=E501,W503
+
+      - name: Run financial engine tests
+        run: |
+          pytest tests/ -v --tb=short
+        env:
+          # No real API keys in CI — tests use financial_engine only
+          OPENAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+          GOOGLE_API_KEY: ""
+          FRED_API_KEY: ""
+
+      - name: Verify app imports cleanly
+        run: |
+          python -c "
+          from utils.financial_engine import FinancialProfile, calculate_baseline, financial_health_score
+          from utils.data_fetcher import get_fred_rates
+          print('✅ All imports successful')
+          "
+
+      - name: Validate known numpy-financial answers
+        run: |
+          python -c "
+          import numpy_financial as npf
+          import numpy as np
+
+          # Known test: $18,000 @ 5.5%, $920/mo → ~21 months
+          months = npf.nper(0.055/12, -920, 18000)
+          assert 19 <= float(months) <= 24, f'FAIL: got {float(months):.1f} months'
+
+          # FV: $12,000 at 7% for 10 years → ~$23,598
+          fv = npf.fv(0.07/12, 120, 0, -12000)
+          assert 22000 <= float(fv) <= 26000, f'FAIL: got {float(fv):.0f}'
+
+          print('✅ numpy-financial validation passed')
+          "
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for exposed secrets
+        run: |
+          # Fail if any real API keys are accidentally committed
+          if grep -r "sk-[a-zA-Z0-9]\{48,\}" . --include="*.py" --include="*.env" --exclude-dir=".git"; then
+            echo "❌ Possible OpenAI key found in code!"
+            exit 1
+          fi
+          if grep -r "sk-ant-api" . --include="*.py" --exclude-dir=".git"; then
+            echo "❌ Possible Anthropic key found in code!"
+            exit 1
+          fi
+          echo "✅ No secrets detected"
