@@ -133,27 +133,19 @@ with st.sidebar:
 
     st.divider()
 
-    st.session_state.f_age = st.slider(
-        "Age", 22, 65, st.session_state.f_age)
-    st.session_state.f_income = st.number_input(
-        "Monthly Income ($)", 1000, 100000, st.session_state.f_income, step=100)
-    st.session_state.f_expenses = st.number_input(
-        "Monthly Expenses ($)", 500, 80000, st.session_state.f_expenses, step=100)
+    st.slider("Age", 22, 65, key="f_age")
+    st.number_input("Monthly Income ($)", 1000, 100000, step=100, key="f_income")
+    st.number_input("Monthly Expenses ($)", 500, 80000, step=100, key="f_expenses")
 
     st.divider()
     st.markdown("**💳 Debt**")
-    st.session_state.f_debt = st.number_input(
-        "Total Debt ($)", 0, 500000, st.session_state.f_debt, step=500)
-    st.session_state.f_debt_rate = st.slider(
-        "Debt Interest Rate (%)", 0.0, 25.0, float(st.session_state.f_debt_rate), 0.1)
+    st.number_input("Total Debt ($)", 0, 500000, step=500, key="f_debt")
+    st.slider("Debt Interest Rate (%)", 0.0, 25.0, step=0.1, key="f_debt_rate")
 
     st.divider()
     st.markdown("**💰 Savings**")
-    st.session_state.f_savings = st.number_input(
-        "Current Savings ($)", 0, 2000000, st.session_state.f_savings, step=500)
-    st.session_state.f_risk = st.select_slider(
-        "Risk Tolerance", ["conservative","moderate","aggressive"],
-        value=st.session_state.f_risk)
+    st.number_input("Current Savings ($)", 0, 2000000, step=500, key="f_savings")
+    st.select_slider("Risk Tolerance", ["conservative","moderate","aggressive"], key="f_risk")
 
     st.divider()
 
