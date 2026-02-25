@@ -102,6 +102,8 @@ Three things surprised me:
 
 The full code is on GitHub: **github.com/jasminkaur9/financial-twin**
 
+**Live app: [jasminkaur9-financial-twin-app-npkpy9.streamlit.app](https://jasminkaur9-financial-twin-app-npkpy9.streamlit.app)**
+
 Load the sample profile (Age 28, $6.5K/month, $18K debt) and run it. Watch GPT tell you to invest aggressively while Gemini tells you to pay off debt first. Then look at the divergence score and ask: which assumptions are closest to your actual beliefs?
 
 That question — not the answer — is the point.

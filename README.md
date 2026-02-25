@@ -24,7 +24,7 @@ The result: a **quantified divergence** showing not just *what* happens, but *wh
 
 ## Live Demo
 
-👉 [**Launch App on Streamlit Cloud**](https://your-app.streamlit.app) *(deploy link here)*
+👉 [**Launch App — Financial Twin**](https://jasminkaur9-financial-twin-app-npkpy9.streamlit.app)
 
 ## Quick Start
 
