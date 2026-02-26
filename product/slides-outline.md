@@ -158,4 +158,4 @@ Show how I modified the AI:
 > Making them explicit and comparing them is more valuable than any single "right" answer.
 
 GitHub: github.com/jasminkaur9/financial-twin
-Substack: [your substack link]
+Substack: https://jasminkaur3.substack.com/p/i-built-a-financial-twin-using-3
