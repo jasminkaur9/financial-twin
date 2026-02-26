@@ -116,6 +116,31 @@ def make_fp():
         risk_tolerance=st.session_state.f_risk,
     )
 
+def _profile_dict(fp):
+    return {
+        "age": fp.age, "monthly_income": fp.monthly_income,
+        "monthly_expenses": fp.monthly_expenses, "total_debt": fp.total_debt,
+        "debt_rate": fp.debt_interest_rate, "savings": fp.current_savings,
+        "risk_tolerance": fp.risk_tolerance,
+    }
+
+# ── Auto-load: populate with demo data on first open ──────────
+if st.session_state.council_results is None:
+    from utils.ai_council import _generate_demo
+    _fp0 = make_fp()
+    _pd0 = _profile_dict(_fp0)
+    _dr  = _generate_demo(_pd0)
+    st.session_state.council_results = _dr
+    st.session_state.synthesis       = synthesize_council(_dr)
+    st.session_state.baseline        = calculate_baseline(_fp0)
+    st.session_state.health_scores   = financial_health_score(_fp0)
+    st.session_state.profile         = _pd0
+    st.session_state.fred_data       = {
+        "inflation_rate": 3.1, "treasury_10y": 4.5,
+        "fed_funds_rate": 5.25, "savings_rate": 4.75, "source": "defaults",
+    }
+    st.session_state.audit_log       = []
+
 # ── SIDEBAR ───────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🧬 Your Financial Profile")
@@ -178,40 +203,29 @@ with st.sidebar:
 
 # ── RUN COUNCIL ───────────────────────────────────────────────
 if run_btn:
-    fp = make_fp()
-    profile_data = {
-        "age": fp.age, "monthly_income": fp.monthly_income,
-        "monthly_expenses": fp.monthly_expenses, "total_debt": fp.total_debt,
-        "debt_rate": fp.debt_interest_rate, "savings": fp.current_savings,
-        "risk_tolerance": fp.risk_tolerance,
-    }
+    try:
+        fp = make_fp()
+        profile_data = _profile_dict(fp)
 
-    st.session_state.profile       = profile_data
-    st.session_state.baseline      = calculate_baseline(fp)
-    st.session_state.health_scores = financial_health_score(fp)
-    st.session_state.audit_log     = []
+        st.session_state.profile       = profile_data
+        st.session_state.baseline      = calculate_baseline(fp)
+        st.session_state.health_scores = financial_health_score(fp)
+        st.session_state.audit_log     = []
 
-    with st.spinner("📡 Fetching live economic data from FRED..."):
-        st.session_state.fred_data = get_fred_rates()
+        with st.spinner("🤖 AI Council running — GPT-4o · Gemini · Claude in parallel..."):
+            st.session_state.fred_data    = get_fred_rates()
+            results                       = run_council(profile_data, st.session_state.audit_log)
+            synthesis                     = synthesize_council(results)
+            st.session_state.council_results = results
+            st.session_state.synthesis       = synthesis
 
-    with st.status("🤖 AI Council convening — 3 models running in parallel...", expanded=True) as status:
-        st.write("⚡ **GPT-4o · Alex Chen** — 7.0% return, 2.5% inflation")
-        st.write("🛡️ **Gemini 2.0 Flash · Morgan Wells** — 5.0% return, 3.5% inflation")
-        st.write("⚖️ **Claude Sonnet · Jordan Rivera** — 6.5% return, 3.0% inflation")
-
-        results  = run_council(profile_data, st.session_state.audit_log)
-        synthesis = synthesize_council(results)
-
-        st.session_state.council_results = results
-        st.session_state.synthesis       = synthesis
-
-        label = "✅ Council complete! (Demo Mode)" if is_demo() else "✅ Council complete! (Live AI)"
-        status.update(label=label, state="complete")
-
-    st.rerun()
+        st.rerun()
+    except Exception as _e:
+        import traceback
+        st.error(f"⚠️ Analysis error: {_e}")
+        st.code(traceback.format_exc())
 
 # ── HERO ──────────────────────────────────────────────────────
-has_results = st.session_state.council_results is not None
 
 st.markdown("""
 <div class="hero">
@@ -234,35 +248,23 @@ syn = st.session_state.synthesis
 m1, m2, m3, m4 = st.columns(4)
 
 with m1:
-    if b:
-        delta = "✅ Positive" if b["net_worth"] >= 0 else "⚠️ Negative"
-        st.metric("Current Net Worth", fmt(b["net_worth"]), delta)
-    else:
-        st.metric("Current Net Worth", "—", "Run your Twin")
+    delta = "✅ Positive" if b["net_worth"] >= 0 else "⚠️ Negative"
+    st.metric("Current Net Worth", fmt(b["net_worth"]), delta)
 
 with m2:
-    if b:
-        delta = "✅ Healthy" if b["savings_rate_pct"] >= 20 else "⚠️ Below 20% target"
-        st.metric("Savings Rate", f"{b['savings_rate_pct']:.1f}%", delta)
-    else:
-        st.metric("Savings Rate", "—", "Run your Twin")
+    delta = "✅ Healthy" if b["savings_rate_pct"] >= 20 else "⚠️ Below 20% target"
+    st.metric("Savings Rate", f"{b['savings_rate_pct']:.1f}%", delta)
 
 with m3:
-    if syn:
-        st.metric("Retirement Age Range",
-                  f"Age {syn['retirement_range'][0]}–{syn['retirement_range'][1]}",
-                  f"Consensus: {syn['consensus_retirement_age']}")
-    else:
-        st.metric("Retirement Age Range", "—", "Run your Twin")
+    st.metric("Retirement Age Range",
+              f"Age {syn['retirement_range'][0]}–{syn['retirement_range'][1]}",
+              f"Consensus: {syn['consensus_retirement_age']}")
 
 with m4:
-    if syn:
-        lo, hi = syn["net_worth_30yr_range"]
-        st.metric("30-Year Net Worth",
-                  fmt(syn["net_worth_30yr_consensus"]),
-                  f"Range: {fmt(lo)}–{fmt(hi)}")
-    else:
-        st.metric("30-Year Net Worth", "—", "Run your Twin")
+    lo, hi = syn["net_worth_30yr_range"]
+    st.metric("30-Year Net Worth",
+              fmt(syn["net_worth_30yr_consensus"]),
+              f"Range: {fmt(lo)}–{fmt(hi)}")
 
 st.divider()
 
@@ -278,16 +280,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # TAB 1 — TWIN OVERVIEW
 # ════════════════════════════════════════════════════════════════
 with tab1:
-    if not has_results:
-        st.info("👈 Enter your profile in the sidebar and click **Run My Financial Twin** to begin.")
-        st.markdown("""
-        **What you'll see after running:**
-        - 5-dimension financial health radar chart
-        - Monthly cash flow waterfall
-        - FIRE number and key financial metrics
-        - Live FRED economic data context
-        """)
-    else:
+    if True:
         fp = make_fp()
         scores = st.session_state.health_scores or financial_health_score(fp)
 
@@ -330,15 +323,7 @@ with tab1:
 # TAB 2 — AI COUNCIL
 # ════════════════════════════════════════════════════════════════
 with tab2:
-    if not has_results:
-        st.info("👈 Run your Financial Twin to see the AI Council debate your financial future.")
-        st.markdown("""
-        **Three AI advisors will analyze your profile simultaneously:**
-        - ⚡ **Alex Chen (GPT-4o)** — aggressive growth philosophy
-        - 🛡️ **Morgan Wells (Gemini)** — conservative safety-first philosophy
-        - ⚖️ **Jordan Rivera (Claude)** — evidence-based balanced philosophy
-        """)
-    else:
+    if True:
         results = st.session_state.council_results
         syn     = st.session_state.synthesis
 
@@ -421,17 +406,7 @@ with tab2:
 # TAB 3 — SCENARIO VISUALIZER
 # ════════════════════════════════════════════════════════════════
 with tab3:
-    if not has_results:
-        st.info("👈 Run your Financial Twin to visualize 30-year projections.")
-        st.markdown("""
-        **Charts you'll see:**
-        - 30-year net worth projection — 3 model lines with confidence bands
-        - Strategy comparison: Debt First vs Invest First vs Balanced
-        - Retirement timeline across all 3 models
-        - Model divergence chart
-        - Custom scenario explorer with live sliders
-        """)
-    else:
+    if True:
         results = st.session_state.council_results
         fp      = make_fp()
 
@@ -500,15 +475,7 @@ with tab4:
     st.caption("Auto-logged on every run. Download as JSON for your class AI log submission.")
 
     if not st.session_state.audit_log:
-        st.info("👈 Run your Financial Twin to populate the audit trail.")
-        st.markdown("""
-        **What gets logged automatically:**
-        - Council start event with your full financial profile
-        - Each model's prompt (first 600 chars), response, elapsed time
-        - Economic assumptions used by each model
-        - Council synthesis: consensus retirement age, NW range, divergence score
-        - Demo mode notice if API keys aren't configured
-        """)
+        st.info("Click **🚀 Run My Financial Twin** to generate a full audit log with every prompt sent to each AI model.")
     else:
         # Download
         log_json = json.dumps(st.session_state.audit_log, indent=2)
