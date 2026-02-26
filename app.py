@@ -32,7 +32,7 @@ st.set_page_config(
     page_title="Financial Twin | AI Life Simulator",
     page_icon="🧬",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── CSS ───────────────────────────────────────────────────────
@@ -141,65 +141,71 @@ if st.session_state.council_results is None:
     }
     st.session_state.audit_log       = []
 
-# ── SIDEBAR ───────────────────────────────────────────────────
-with st.sidebar:
+# ── HERO ──────────────────────────────────────────────────────
+st.markdown("""
+<div class="hero">
+  <p class="hero-title">🧬 Financial Twin</p>
+  <p class="hero-sub">Three AI advisors. Three visions of your financial future. One consensus.</p>
+  <div class="hero-tags">
+    <span class="tag">⚡ GPT-4o · 7% Return</span>
+    <span class="tag">🛡️ Gemini · 5% Return</span>
+    <span class="tag">⚖️ Claude · 6.5% Return</span>
+    <span class="tag">📊 FRED Live Data</span>
+    <span class="tag">🔄 Parallel AI Calls</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── PROFILE FORM (main area) ───────────────────────────────────
+hdr_col, mode_col = st.columns([3, 1])
+with hdr_col:
     st.markdown("### 🧬 Your Financial Profile")
+with mode_col:
+    mode_color = "#ff9800" if is_demo() else "#00e676"
+    mode_label = "⚙️ Demo Mode" if is_demo() else "🟢 Live AI Mode"
+    st.markdown(
+        f'<div style="text-align:right;margin-top:12px;color:{mode_color};'
+        f'font-size:.82rem;font-weight:600">{mode_label}</div>',
+        unsafe_allow_html=True,
+    )
 
-    # Load sample — updates session state keys, then reruns
-    if st.button("⚡ Load Sample Profile", use_container_width=True):
-        st.session_state.f_age       = 28
-        st.session_state.f_income    = 6500
-        st.session_state.f_expenses  = 4200
-        st.session_state.f_debt      = 18000
-        st.session_state.f_debt_rate = 5.5
-        st.session_state.f_savings   = 12000
-        st.session_state.f_risk      = "moderate"
-        st.rerun()
+if st.button("⚡ Load Sample Profile", help="Age 28 · $6,500 income · $18,000 debt at 5.5%"):
+    st.session_state.f_age       = 28
+    st.session_state.f_income    = 6500
+    st.session_state.f_expenses  = 4200
+    st.session_state.f_debt      = 18000
+    st.session_state.f_debt_rate = 5.5
+    st.session_state.f_savings   = 12000
+    st.session_state.f_risk      = "moderate"
+    st.rerun()
 
-    st.divider()
-
+r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+with r1c1:
     st.slider("Age", 22, 65, int(st.session_state.f_age), key="f_age")
+with r1c2:
     st.number_input("Monthly Income ($)", 1000, 100000, int(st.session_state.f_income), step=100, key="f_income")
+with r1c3:
     st.number_input("Monthly Expenses ($)", 500, 80000, int(st.session_state.f_expenses), step=100, key="f_expenses")
-
-    st.divider()
-    st.markdown("**💳 Debt**")
-    st.number_input("Total Debt ($)", 0, 500000, int(st.session_state.f_debt), step=500, key="f_debt")
-    st.slider("Debt Interest Rate (%)", 0.0, 25.0, float(st.session_state.f_debt_rate), 0.1, key="f_debt_rate")
-
-    st.divider()
-    st.markdown("**💰 Savings**")
+with r1c4:
     st.number_input("Current Savings ($)", 0, 2000000, int(st.session_state.f_savings), step=500, key="f_savings")
-    st.select_slider("Risk Tolerance", ["conservative","moderate","aggressive"], value=st.session_state.f_risk, key="f_risk")
 
-    st.divider()
-
-    # CSV upload
-    with st.expander("📂 Upload Bank CSV (Advanced)"):
-        csv_file = st.file_uploader("transactions.csv", type=["csv"], label_visibility="collapsed")
-        if csv_file:
-            try:
-                df_csv = pd.read_csv(csv_file)
-                st.dataframe(df_csv.head(5), use_container_width=True)
-                st.caption(f"✅ {len(df_csv)} rows loaded")
-            except Exception as e:
-                st.error(f"CSV error: {e}")
-
+r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+with r2c1:
+    st.number_input("Total Debt ($)", 0, 500000, int(st.session_state.f_debt), step=500, key="f_debt")
+with r2c2:
+    st.slider("Debt Rate (%)", 0.0, 25.0, float(st.session_state.f_debt_rate), 0.1, key="f_debt_rate")
+with r2c3:
+    st.select_slider("Risk Tolerance", ["conservative", "moderate", "aggressive"],
+                     value=st.session_state.f_risk, key="f_risk")
+with r2c4:
     surplus = st.session_state.f_income - st.session_state.f_expenses
     if surplus <= 0:
-        st.warning(f"⚠️ Negative surplus: ${surplus:,.0f}/mo")
+        st.warning(f"⚠️ Deficit: ${surplus:,.0f}/mo")
+    else:
+        st.metric("Monthly Surplus", fmt(surplus))
+    run_btn = st.button("🚀 Run My Financial Twin", type="primary", use_container_width=True)
 
-    run_btn = st.button("🚀 Run My Financial Twin",
-                        type="primary", use_container_width=True)
-
-    mode_color = "#ff9800" if is_demo() else "#00e676"
-    mode_label = "Demo Mode" if is_demo() else "Live AI Mode"
-    st.markdown(f"""
-    <div style="text-align:center;margin-top:8px;padding:6px;border-radius:12px;
-    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
-    color:{mode_color};font-size:.78rem;font-weight:600">
-    ● {mode_label}
-    </div>""", unsafe_allow_html=True)
+st.divider()
 
 # ── RUN COUNCIL ───────────────────────────────────────────────
 if run_btn:
@@ -224,22 +230,6 @@ if run_btn:
         import traceback
         st.error(f"⚠️ Analysis error: {_e}")
         st.code(traceback.format_exc())
-
-# ── HERO ──────────────────────────────────────────────────────
-
-st.markdown("""
-<div class="hero">
-  <p class="hero-title">🧬 Financial Twin</p>
-  <p class="hero-sub">Three AI advisors. Three visions of your financial future. One consensus.</p>
-  <div class="hero-tags">
-    <span class="tag">⚡ GPT-4o · 7% Return</span>
-    <span class="tag">🛡️ Gemini · 5% Return</span>
-    <span class="tag">⚖️ Claude · 6.5% Return</span>
-    <span class="tag">📊 FRED Live Data</span>
-    <span class="tag">🔄 Parallel AI Calls</span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
 
 # ── METRIC ROW ────────────────────────────────────────────────
 b   = st.session_state.baseline
