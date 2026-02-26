@@ -232,7 +232,9 @@ if run_btn:
         st.code(traceback.format_exc())
 
 # ── METRIC ROW ────────────────────────────────────────────────
-b   = st.session_state.baseline
+# Always recompute baseline from current form values so metrics update live
+_fp_live = make_fp()
+b   = calculate_baseline(_fp_live)
 syn = st.session_state.synthesis
 
 m1, m2, m3, m4 = st.columns(4)
@@ -271,15 +273,16 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ════════════════════════════════════════════════════════════════
 with tab1:
     if True:
-        fp = make_fp()
-        scores = st.session_state.health_scores or financial_health_score(fp)
+        # Always use live form values so charts/metrics update immediately
+        fp     = _fp_live
+        bl     = b
+        scores = financial_health_score(fp)
 
         # Charts row
         c1, c2 = st.columns(2)
         with c1:
             st.plotly_chart(plot_financial_health_radar(scores), use_container_width=True)
         with c2:
-            bl = st.session_state.baseline
             st.plotly_chart(
                 plot_cash_flow(fp.monthly_income, fp.monthly_expenses,
                                bl["monthly_investment"], bl["monthly_debt_payment"]),
@@ -398,7 +401,7 @@ with tab2:
 with tab3:
     if True:
         results = st.session_state.council_results
-        fp      = make_fp()
+        fp      = _fp_live
 
         # Chart 1 — 30yr projection
         st.plotly_chart(
