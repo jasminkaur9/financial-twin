@@ -163,3 +163,138 @@ class TestProjection:
         )
         projs = project_net_worth(profile, 0.07, 0.03, "invest_first", 30)
         assert projs[30]["net_worth"] > projs[0]["net_worth"], "Net worth should grow over 30 years"
+
+
+# ── Statistical analysis tests ───────────────────────────────────────────────
+
+class TestStatisticalAnalysis:
+    """
+    Validates utils/statistics.py — Pearson, Spearman, rolling correlation,
+    and ANOVA significance across multi-model projections.
+    """
+
+    def setup_method(self):
+        from utils.statistics import (
+            pearson_correlation, spearman_correlation,
+            rolling_correlation, annual_growth_rates,
+        )
+        self.pearson = pearson_correlation
+        self.spearman = spearman_correlation
+        self.rolling = rolling_correlation
+        self.growth_rates = annual_growth_rates
+
+    def test_pearson_perfect_positive(self):
+        """Identical series → r = 1.0"""
+        a = [1.0, 2.0, 3.0, 4.0, 5.0]
+        r, p = self.pearson(a, a)
+        assert r == 1.0
+
+    def test_pearson_perfect_negative(self):
+        """Reversed series → r = -1.0"""
+        a = [1.0, 2.0, 3.0, 4.0, 5.0]
+        b = [5.0, 4.0, 3.0, 2.0, 1.0]
+        r, p = self.pearson(a, b)
+        assert r == -1.0
+
+    def test_pearson_p_value_significant(self):
+        """Strongly correlated financial series should be significant (p < 0.05)."""
+        # Two model projections growing at different rates
+        gpt =    [10000 * (1.07 ** y) for y in range(31)]
+        gemini = [10000 * (1.05 ** y) for y in range(31)]
+        _, p = self.pearson(gpt, gemini)
+        assert p < 0.05, f"Expected p < 0.05, got {p}"
+
+    def test_spearman_monotone_series(self):
+        """Monotonically increasing series → rho = 1.0"""
+        a = list(range(1, 32))
+        rho, p = self.spearman(a, a)
+        assert rho == 1.0
+
+    def test_spearman_p_value_significant(self):
+        """Correlated financial projections → Spearman p < 0.05."""
+        gpt    = [10000 * (1.07 ** y) for y in range(31)]
+        claude = [10000 * (1.065 ** y) for y in range(31)]
+        _, p = self.spearman(gpt, claude)
+        assert p < 0.05
+
+    def test_rolling_correlation_length(self):
+        """Rolling correlation output has same length as input."""
+        a = list(range(31))
+        b = list(range(31))
+        result = self.rolling(a, b, window=5)
+        assert len(result) == 31
+
+    def test_rolling_correlation_none_prefix(self):
+        """First (window - 1) entries should be None."""
+        a = [float(x) for x in range(31)]
+        result = self.rolling(a, a, window=5)
+        assert all(v is None for v in result[:4])
+
+    def test_rolling_correlation_values(self):
+        """Non-None rolling values should be between -1 and 1."""
+        gpt    = [10000 * (1.07 ** y) for y in range(31)]
+        gemini = [10000 * (1.05 ** y) for y in range(31)]
+        result = self.rolling(gpt, gemini, window=5)
+        for v in result:
+            if v is not None:
+                assert -1.0 <= v <= 1.0, f"Rolling r out of range: {v}"
+
+    def test_annual_growth_rates_length(self):
+        """Growth rates series has same length as input."""
+        series = [10000 * (1.07 ** y) for y in range(31)]
+        rates = self.growth_rates(series)
+        assert len(rates) == 31
+
+    def test_annual_growth_rates_first_is_none(self):
+        """Year 0 has no prior year → None."""
+        rates = self.growth_rates([100.0, 107.0, 114.49])
+        assert rates[0] is None
+
+    def test_annual_growth_rates_values(self):
+        """$100 growing at 7%/year → all non-None rates ≈ 0.07."""
+        series = [100.0 * (1.07 ** y) for y in range(11)]
+        rates = self.growth_rates(series)
+        for r in rates[1:]:
+            assert r is not None
+            assert abs(r - 0.07) < 0.0001, f"Expected ~0.07, got {r}"
+
+    def test_model_divergence_stats_keys(self):
+        """model_divergence_stats returns all expected top-level keys."""
+        from utils.statistics import model_divergence_stats
+        from utils.financial_engine import FinancialProfile
+        from utils.ai_council import _generate_demo
+
+        profile_dict = {
+            "age": 28, "monthly_income": 6500, "monthly_expenses": 4200,
+            "total_debt": 18000, "debt_rate": 0.055,
+            "savings": 12000, "risk_tolerance": "moderate",
+        }
+        demo = _generate_demo(profile_dict)
+        result = model_divergence_stats(demo)
+
+        for key in ["pairwise_correlations", "growth_rate_correlations",
+                    "rolling_correlation_gpt_gemini", "net_worth_by_year",
+                    "anova", "summary"]:
+            assert key in result, f"Missing key: {key}"
+
+    def test_paired_ttest_significant(self):
+        """
+        GPT-4o (7% return) vs Gemini (5% return) trajectories should be
+        significantly different via paired t-test (p < 0.05).
+        """
+        from utils.statistics import model_divergence_stats
+        from utils.ai_council import _generate_demo
+
+        profile_dict = {
+            "age": 28, "monthly_income": 6500, "monthly_expenses": 4200,
+            "total_debt": 18000, "debt_rate": 0.055,
+            "savings": 12000, "risk_tolerance": "moderate",
+        }
+        demo = _generate_demo(profile_dict)
+        result = model_divergence_stats(demo)
+        # GPT vs Gemini is the widest assumption gap (7% vs 5%)
+        gpt_vs_gemini = result["anova"].get("gpt_vs_gemini", {})
+        assert gpt_vs_gemini.get("significant"), (
+            f"GPT vs Gemini trajectory should be statistically significant. "
+            f"p={gpt_vs_gemini.get('p_value')}"
+        )

@@ -440,6 +440,99 @@ with tab3:
 
         st.divider()
 
+        # ── Statistical Significance Analysis ────────────────────────────────
+        st.markdown("#### 📊 Statistical Significance of Divergence")
+        st.caption(
+            "Pearson r, Spearman ρ, p-values, and rolling correlation across all 3 model projections."
+        )
+
+        stat = syn.get("statistical_analysis", {})
+        if stat:
+            pairwise = stat.get("pairwise_correlations", {})
+            growth_pw = stat.get("growth_rate_correlations", {})
+            anova = stat.get("anova", {})
+            nw_yr = stat.get("net_worth_by_year", {})
+            rolling = stat.get("rolling_correlation_gpt_gemini", [])
+
+            # Pairwise correlation table
+            if pairwise:
+                pair_labels = {
+                    "gpt_vs_gemini":  "GPT-4o vs Gemini 2.0",
+                    "gpt_vs_claude":  "GPT-4o vs Claude Sonnet",
+                    "gemini_vs_claude": "Gemini 2.0 vs Claude Sonnet",
+                }
+                rows = []
+                for key, s in pairwise.items():
+                    label = pair_labels.get(key, key)
+                    sig_badge = "✅ p<0.05" if s["pearson_significant"] else "—"
+                    gs = growth_pw.get(key, {})
+                    rows.append({
+                        "Model Pair": label,
+                        "Pearson r (level)": f"{s['pearson_r']:.4f}",
+                        "Spearman ρ (level)": f"{s['spearman_rho']:.4f}",
+                        "p-value": f"{s['pearson_p']:.4f}",
+                        "Significant?": sig_badge,
+                        "Growth-rate r": f"{gs.get('pearson_r', '—')}" if gs else "—",
+                    })
+                import pandas as pd
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            # Paired t-tests
+            if anova:
+                pair_labels = {
+                    "gpt_vs_gemini":  "GPT-4o vs Gemini",
+                    "gpt_vs_claude":  "GPT-4o vs Claude",
+                    "gemini_vs_claude": "Gemini vs Claude",
+                }
+                ttest_lines = []
+                for key, t in anova.items():
+                    label = pair_labels.get(key, key)
+                    sig = "✅ p<0.05" if t.get("significant") else "—"
+                    ttest_lines.append(
+                        f"<strong>{label}</strong>: t={t.get('t_statistic')}, "
+                        f"p={t.get('p_value')} &nbsp;{sig}"
+                    )
+                st.markdown(
+                    f"""<div style="background:rgba(0,0,0,.25);border-left:3px solid #00d4ff;
+                    border-radius:0 12px 12px 0;padding:12px 18px;margin:8px 0;font-size:.85rem;line-height:2">
+                    <div style="color:#8888a8;font-size:.72rem;font-weight:700;letter-spacing:1px;
+                    text-transform:uppercase;margin-bottom:6px">Paired T-Tests — Are model trajectories significantly different?</div>
+                    {'<br>'.join(ttest_lines)}
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+
+            # Net worth spread by year
+            if nw_yr:
+                col_a, col_b, col_c = st.columns(3)
+                for col, yr_key, label in [
+                    (col_a, "year_10", "Year 10"),
+                    (col_b, "year_20", "Year 20"),
+                    (col_c, "year_30", "Year 30"),
+                ]:
+                    if yr_key in nw_yr:
+                        d = nw_yr[yr_key]
+                        with col:
+                            st.metric(
+                                f"{label} Spread",
+                                f"${d['spread']:,.0f}",
+                                f"CV = {d['cv_pct']}%",
+                            )
+
+            # Rolling correlation sparkline (text-based)
+            valid_rolling = [(i, v) for i, v in enumerate(rolling) if v is not None]
+            if valid_rolling:
+                st.caption(
+                    f"Rolling 5-year Pearson r (GPT-4o vs Gemini) — "
+                    f"min {min(v for _, v in valid_rolling):.3f} · "
+                    f"max {max(v for _, v in valid_rolling):.3f} · "
+                    f"final (yr 30): {valid_rolling[-1][1]:.3f}"
+                )
+        else:
+            st.info("Run the Financial Twin to generate statistical analysis.")
+
+        st.divider()
+
         # Custom scenario explorer
         st.markdown("#### 🎛️ Custom Scenario Explorer")
         st.caption("Adjust assumptions below — chart updates instantly")

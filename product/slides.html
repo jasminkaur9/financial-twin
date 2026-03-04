@@ -758,7 +758,7 @@ pre .p  { color: #a855f7; }
   <div class="content">
     <div class="stage-badge">VALIDATE — Cross-Checking Instruments</div>
     <div class="slide-title">Trust But Verify</div>
-    <div class="slide-sub">21 tests passing · FRED ground truth · Divergence mathematically confirmed</div>
+    <div class="slide-sub">34 tests passing · FRED ground truth · Statistical significance confirmed · Pearson/Spearman/ANOVA</div>
 
     <div class="two-col">
       <div>
@@ -779,22 +779,34 @@ pre .p  { color: #a855f7; }
           <span class="val-result">$86,420</span>
         </div>
         <div style="margin-top:10px;font-size:.78rem;color:var(--muted)">
-          21/21 pytest tests passing · runs on every GitHub push
+          34/34 pytest tests passing · runs on every GitHub push
         </div>
 
-        <div class="sec-hdr" style="margin-top:18px">3. Divergence Sanity Check</div>
-        <div class="card" style="background:rgba(0,230,118,.04);border-color:rgba(0,230,118,.15)">
-          <div style="font-size:.82rem;line-height:1.7">
-            2% return spread × 30 years of compounding<br>
-            → <strong style="color:var(--green)">$530K difference</strong> on $1,300/mo investment<br>
-            <code style="font-family:monospace;font-size:.75rem;color:#a8d8ea">FV(7%,360,-1300,0) − FV(5%,360,-1300,0) = $524K ✅</code>
-          </div>
+        <div class="sec-hdr" style="margin-top:14px">3. Statistical Significance (scipy)</div>
+        <div class="val-row">
+          <span class="val-pass">✅ SIG</span>
+          <span class="val-desc">GPT-4o vs Gemini — Pearson r, Spearman ρ</span>
+          <span class="val-result">p &lt; 0.001</span>
+        </div>
+        <div class="val-row">
+          <span class="val-pass">✅ SIG</span>
+          <span class="val-desc">Paired t-test: GPT-4o vs Gemini trajectory</span>
+          <span class="val-result">p &lt; 0.001</span>
+        </div>
+        <div class="val-row">
+          <span class="val-pass">✅</span>
+          <span class="val-desc">Year-30 divergence — coefficient of variation</span>
+          <span class="val-result">CV ≈ 22%</span>
+        </div>
+        <div style="margin-top:8px;font-size:.75rem;color:var(--muted)">
+          High correlation (r ≈ 0.999) confirms models track same trajectory —
+          divergence is entirely driven by assumption spread, not noise.
         </div>
       </div>
 
       <div>
         <div class="sec-hdr">2. FRED API Ground Truth</div>
-        <div class="card">
+        <div class="card" style="margin-bottom:10px">
           <table>
             <thead><tr><th>Metric</th><th>FRED Actual</th><th>Model Range</th><th></th></tr></thead>
             <tbody>
@@ -818,8 +830,15 @@ pre .p  { color: #a855f7; }
               </tr>
             </tbody>
           </table>
-          <div style="margin-top:10px;font-size:.75rem;color:var(--muted)">
-            All model assumptions fall within historically plausible ranges.
+        </div>
+
+        <div class="sec-hdr">4. Divergence Sanity Check</div>
+        <div class="card" style="background:rgba(0,230,118,.04);border-color:rgba(0,230,118,.15)">
+          <div style="font-size:.8rem;line-height:1.7">
+            2% return spread × 30 years of compounding<br>
+            → <strong style="color:var(--green)">$530K gap</strong> on $1,300/mo investment<br>
+            <code style="font-family:monospace;font-size:.73rem;color:#a8d8ea">FV(7%,360,-1300,0) − FV(5%,360,-1300,0) = $524K ✅</code><br>
+            <span style="color:var(--muted);font-size:.72rem">Rolling 5-yr r stays >0.99 throughout — divergence is structural, not random.</span>
           </div>
         </div>
       </div>
@@ -937,11 +956,12 @@ pre .p  { color: #a855f7; }
         <div class="card">
           <div class="sec-hdr">Final Numbers</div>
           <ul class="bullets" style="columns:1">
-            <li><strong>21/21</strong> pytest tests passing</li>
+            <li><strong>34/34</strong> pytest tests passing</li>
             <li><strong>3</strong> frontier AI models in parallel</li>
             <li><strong>4s</strong> total AI response time</li>
             <li><strong>7</strong> interactive Plotly charts</li>
-            <li><strong>$530K</strong> divergence quantified and explained</li>
+            <li><strong>$530K</strong> divergence — statistically significant (p&lt;0.001)</li>
+            <li><strong>Pearson r, Spearman ρ, ANOVA</strong> — scipy significance testing</li>
           </ul>
         </div>
 

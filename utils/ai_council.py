@@ -310,7 +310,11 @@ def synthesize_council(results: Dict[str, FinancialAnalysis]) -> dict:
     """
     Compute consensus + divergence across all 3 models.
     Divergence = coefficient of variation (std/mean * 100).
+    Also runs full statistical analysis: Pearson/Spearman correlations,
+    p-values, rolling correlation, and ANOVA significance test.
     """
+    from utils.statistics import model_divergence_stats
+
     analyses = list(results.values())
 
     def cv(data):
@@ -324,6 +328,12 @@ def synthesize_council(results: Dict[str, FinancialAnalysis]) -> dict:
     inflations = [a.inflation_assumption for a in analyses]
 
     div = round((cv(ages) + cv(nw10) + cv(nw30)) / 3, 1)
+
+    # Statistical significance analysis
+    try:
+        stat_analysis = model_divergence_stats(results)
+    except Exception:
+        stat_analysis = {}
 
     return {
         "consensus_retirement_age": round(sum(ages) / len(ages)),
@@ -345,6 +355,7 @@ def synthesize_council(results: Dict[str, FinancialAnalysis]) -> dict:
             f"Over 30 years, compounding magnifies these into a "
             f"${max(nw30)-min(nw30):,.0f} net worth gap."
         ),
+        "statistical_analysis": stat_analysis,
     }
 
 
